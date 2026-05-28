@@ -3,7 +3,7 @@
 pkgname=php-parallax
 pkgver=0.2.1
 pkgrel=0
-pkgdesc="Go/Rust-semantic concurrency primitive for PHP — WaitGroup + spawn with isolated per-worker runtimes and snapshot-copy captures"
+pkgdesc="PHP WaitGroup + spawn with isolated per-worker runtimes"
 url="https://github.com/AndreyMashukov/php-parallax"
 arch="all"
 license="MIT"
