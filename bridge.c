@@ -185,6 +185,7 @@ static value_t *object_to_value(zval *zv, int depth)
 
 	value_t *obj_v = value_obj(ZSTR_VAL(ce->name), ZSTR_LEN(ce->name), 0);
 
+	/* Declared properties live in the properties_table indexed by offset. */
 	zend_property_info *prop_info;
 	ZEND_HASH_FOREACH_PTR(&ce->properties_info, prop_info) {
 		if ((prop_info->flags & ZEND_ACC_STATIC) != 0) {
@@ -203,6 +204,43 @@ static value_t *object_to_value(zval *zv, int depth)
 		zend_string *name = prop_info->name;
 		value_obj_set(obj_v, ZSTR_VAL(name), ZSTR_LEN(name), child);
 	} ZEND_HASH_FOREACH_END();
+
+	/* Dynamic properties (stdClass-style, or magic __set additions on any
+	 * class with default object handlers) live in obj->properties. Walk
+	 * them and union with the declared ones above; duplicate names cannot
+	 * occur because dynamic adds are routed through a distinct slot when a
+	 * declared property with the same name exists. */
+	HashTable *dyn = obj->properties;
+	if (dyn != NULL) {
+		zend_string *key;
+		zval        *slot;
+		ZEND_HASH_FOREACH_STR_KEY_VAL(dyn, key, slot) {
+			if (key == NULL || Z_TYPE_P(slot) == IS_UNDEF) {
+				continue;
+			}
+			/* Skip if already captured via the declared-property pass.
+			 * Linear scan is fine — property counts on real DTOs stay small. */
+			bool already = false;
+			for (size_t i = 0; i < obj_v->as.obj.n; i++) {
+				const kv_t *kv = &obj_v->as.obj.props[i];
+				if (kv->skey_len == ZSTR_LEN(key)
+					&& memcmp(kv->skey, ZSTR_VAL(key), ZSTR_LEN(key)) == 0) {
+					already = true;
+					break;
+				}
+			}
+			if (already) {
+				continue;
+			}
+			ZVAL_DEREF(slot);
+			value_t *child = zval_to_value_inner(slot, depth + 1);
+			if (child == NULL) {
+				value_free(obj_v);
+				return NULL;
+			}
+			value_obj_set(obj_v, ZSTR_VAL(key), ZSTR_LEN(key), child);
+		} ZEND_HASH_FOREACH_END();
+	}
 
 	return obj_v;
 }

@@ -50,3 +50,6 @@ compile_commands.json
 confdefs.h
 run-tests.php
 tests/c/build-out/
+/vendor/
+/.phpunit.cache/
+/.phpunit.result.cache
