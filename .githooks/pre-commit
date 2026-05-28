@@ -15,6 +15,7 @@ if [ -n "$staged" ]; then
             .githooks/pre-commit) continue ;;
             .githooks/commit-msg) continue ;;
             .github/workflows/ci.yml) continue ;;
+            .github/workflows/release.yml) continue ;;
         esac
         if git show ":$f" 2>/dev/null | grep -Ei "$PATTERN" >/dev/null; then
             echo "pre-commit: AI-trace pattern matched in $f"

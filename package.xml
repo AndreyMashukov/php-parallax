@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<package packagerversion="1.10.13" version="2.0"
+    xmlns="http://pear.php.net/dtd/package-2.0"
+    xmlns:tasks="http://pear.php.net/dtd/tasks-1.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://pear.php.net/dtd/tasks-1.0
+                        http://pear.php.net/dtd/tasks-1.0.xsd
+                        http://pear.php.net/dtd/package-2.0
+                        http://pear.php.net/dtd/package-2.0.xsd">
+    <name>php-parallax</name>
+    <channel>pecl.php.net</channel>
+    <summary>Go/Rust-semantic concurrency primitive for PHP — WaitGroup + spawn with isolated per-worker runtimes and snapshot-copy captures.</summary>
+    <description>
+php-parallax adds OS-thread parallelism to PHP with Go `go func` and Rust `move`
+semantics: every spawned task runs in its own ZTS thread with a fresh PHP request
+lifecycle, captures are deep-copied at spawn time, and per-slot error semantics
+guarantee that one panicking worker never affects its siblings.
+
+Surface in v0.1.0 is intentionally minimal — WaitGroup, ParallaxResult,
+ParallaxWorkerError, CaptureError, SpawnError. Named functions and static
+methods are supported as callables; closure capture is the v0.2.0 milestone.
+    </description>
+    <lead>
+        <name>Andrei Mashukov</name>
+        <user>andreymashukov</user>
+        <email>a.mashukoff@gmail.com</email>
+        <active>yes</active>
+    </lead>
+    <date>2026-05-28</date>
+    <version>
+        <release>0.1.0</release>
+        <api>0.1.0</api>
+    </version>
+    <stability>
+        <release>alpha</release>
+        <api>alpha</api>
+    </stability>
+    <license uri="https://opensource.org/licenses/MIT">MIT</license>
+    <notes>
+Initial release: WaitGroup binding for PHP 8.4 ZTS. Named functions and static
+methods only — closure capture deferred to v0.2.0. Verified on Alpine (musl)
+and Debian Bookworm (glibc).
+    </notes>
+    <contents>
+        <dir name="/">
+            <file role="src" name="config.m4"/>
+            <file role="src" name="php_parallax.h"/>
+            <file role="src" name="php_parallax.c"/>
+            <file role="src" name="php_binding.c"/>
+            <file role="src" name="bridge.h"/>
+            <file role="src" name="bridge.c"/>
+            <file role="src" name="bridge_compat.h"/>
+            <file role="src" name="bridge_worker.c"/>
+            <dir name="core">
+                <file role="src" name="waitgroup.h"/>
+                <file role="src" name="waitgroup.c"/>
+            </dir>
+            <dir name="value">
+                <file role="src" name="value.h"/>
+                <file role="src" name="value.c"/>
+                <file role="src" name="pack.h"/>
+                <file role="src" name="pack.c"/>
+                <file role="src" name="clone.h"/>
+                <file role="src" name="clone.c"/>
+            </dir>
+            <dir name="tests">
+                <file role="test" name="001_function_callable.phpt"/>
+                <file role="test" name="002_static_callable.phpt"/>
+                <file role="test" name="003_capture_resource.phpt"/>
+                <file role="test" name="004_capture_by_ref.phpt"/>
+                <file role="test" name="005_worker_throws.phpt"/>
+                <file role="test" name="006_count.phpt"/>
+                <file role="test" name="007_thousand_spawns.phpt"/>
+                <file role="test" name="008_recipe_pattern.phpt"/>
+                <file role="test" name="_bootstrap.inc"/>
+            </dir>
+            <file role="doc" name="LICENSE"/>
+            <file role="doc" name="README.md"/>
+            <file role="doc" name="CHANGELOG.md"/>
+        </dir>
+    </contents>
+    <dependencies>
+        <required>
+            <php>
+                <min>8.4.0</min>
+            </php>
+            <pearinstaller>
+                <min>1.10.0</min>
+            </pearinstaller>
+        </required>
+    </dependencies>
+    <providesextension>parallax</providesextension>
+    <extsrcrelease>
+        <configureoption name="enable-parallax" default="yes" prompt="Enable php-parallax"/>
+    </extsrcrelease>
+</package>

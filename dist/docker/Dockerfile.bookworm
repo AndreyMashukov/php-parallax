@@ -1,0 +1,32 @@
+# Turnkey image: php:8.4-zts-bookworm with php-parallax pre-installed.
+# Build:
+#   docker build -t ghcr.io/andreymashukov/php-parallax:bookworm -f dist/docker/Dockerfile.bookworm .
+# Run:
+#   docker run --rm ghcr.io/andreymashukov/php-parallax:bookworm php -m | grep parallax
+
+ARG PHP_VERSION=8.4
+FROM php:${PHP_VERSION}-zts-bookworm AS build
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends autoconf gcc make \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /src
+COPY . .
+
+RUN php -i | grep -q "Thread Safety => enabled" \
+    || (echo "FATAL: base image is NOT ZTS" && exit 1)
+
+RUN phpize \
+ && ./configure --enable-parallax \
+ && make -j"$(nproc)" \
+ && make install \
+ && SCAN_DIR=$(php -i | awk -F'=> ' '/Scan this dir/ { print $2; exit }') \
+ && echo "extension=parallax.so" > "$SCAN_DIR/parallax.ini" \
+ && php -m | grep -q parallax \
+ && php -r '$wg = new WaitGroup(); $wg->go("strlen", ["smoke"]); $r = $wg->wait(); exit($r[0]->value === 5 ? 0 : 1);'
+
+FROM php:${PHP_VERSION}-zts-bookworm
+COPY --from=build /usr/local/lib/php/extensions/ /usr/local/lib/php/extensions/
+COPY --from=build /usr/local/etc/php/conf.d/parallax.ini /usr/local/etc/php/conf.d/parallax.ini
+RUN php -m | grep -q parallax
