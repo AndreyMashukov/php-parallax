@@ -1,7 +1,7 @@
 .PHONY: help core-test value-test asan-test stress-test leak-test ext-build ext-test docker-test-alpine docker-test-bookworm docker-test clean
 
-CC          ?= clang
-CFLAGS_BASE  = -std=c11 -Wall -Wextra -Wpedantic -Wno-unused-parameter -O0 -g
+CC          := /usr/bin/gcc
+CFLAGS_BASE  = -std=c11 -Wall -Wextra -Wpedantic -Wno-unused-parameter -O0 -g -D_GNU_SOURCE
 CFLAGS_ASAN  = -fsanitize=address,undefined -fno-omit-frame-pointer
 INCLUDES     = -I. -Ivalue -Icore
 
@@ -26,17 +26,26 @@ help:
 build-out:
 	@mkdir -p build-out
 
+VALUE_TESTS := tests/c/test_value.c tests/c/test_pack.c tests/c/test_clone.c
+CORE_TESTS  := tests/c/test_waitgroup.c
+
 value-test: build-out
-	$(CC) $(CFLAGS_BASE) $(CFLAGS_ASAN) $(INCLUDES) \
-		$(VALUE_SRC) tests/c/test_pack.c tests/c/test_clone.c tests/c/test_value.c \
-		-o build-out/value-test
-	./build-out/value-test
+	@for t in $(VALUE_TESTS); do \
+		name=$$(basename $$t .c); \
+		echo "==> $$name"; \
+		$(CC) $(CFLAGS_BASE) $(CFLAGS_ASAN) $(INCLUDES) \
+			$(VALUE_SRC) $$t -o build-out/$$name || exit 1; \
+		./build-out/$$name || exit 1; \
+	done
 
 core-test: build-out
-	$(CC) $(CFLAGS_BASE) $(CFLAGS_ASAN) $(INCLUDES) \
-		$(VALUE_SRC) $(CORE_SRC) tests/c/test_waitgroup.c tests/c/test_queue.c \
-		-lpthread -o build-out/core-test
-	./build-out/core-test
+	@for t in $(CORE_TESTS); do \
+		name=$$(basename $$t .c); \
+		echo "==> $$name"; \
+		$(CC) $(CFLAGS_BASE) $(CFLAGS_ASAN) $(INCLUDES) \
+			$(VALUE_SRC) $(CORE_SRC) $$t -lpthread -o build-out/$$name || exit 1; \
+		./build-out/$$name || exit 1; \
+	done
 
 stress-test: build-out
 	$(CC) $(CFLAGS_BASE) $(CFLAGS_ASAN) $(INCLUDES) \
