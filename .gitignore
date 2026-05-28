@@ -53,3 +53,4 @@ tests/c/build-out/
 /vendor/
 /.phpunit.cache/
 /.phpunit.result.cache
+.php-cs-fixer.cache
