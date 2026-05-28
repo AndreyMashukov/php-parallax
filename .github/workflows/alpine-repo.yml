@@ -62,7 +62,7 @@ jobs:
 
               su builder -c "cd /home/builder/php-parallax/dist/alpine && abuild checksum && abuild -F -r"
 
-              cp /home/builder/packages/alpine/x86_64/*.apk /out/
+              cp /home/builder/packages/dist/x86_64/*.apk /out/
               cp /home/builder/.abuild/andreymashukov.rsa.pub /out/
             '
 
