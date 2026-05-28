@@ -28,8 +28,8 @@ methods are supported as callables; closure capture is the v0.2.0 milestone.
     </lead>
     <date>2026-05-28</date>
     <version>
-        <release>0.2.0</release>
-        <api>0.2.0</api>
+        <release>0.2.1</release>
+        <api>0.2.1</api>
     </version>
     <stability>
         <release>alpha</release>
@@ -37,11 +37,23 @@ methods are supported as callables; closure capture is the v0.2.0 milestone.
     </stability>
     <license uri="https://opensource.org/licenses/MIT">MIT</license>
     <notes>
-v0.2.0 — inline closure capture lands. `function (...) use (...) { ... }` is
-now a valid callable for `WaitGroup::go()`; captures are deep-cloned by value
-at spawn time (Rust `move` semantics). Rejections: by-reference use, nested
-closures, eval-defined closures, bound $this. 14/14 phpt tests on Alpine
-(musl) and Debian Bookworm (glibc).
+v0.2.1 — bug-fix and release-infrastructure pass.
+
+  - bridge: stdClass dynamic properties are now preserved across the
+    thread boundary. The capture code used to walk only the declared
+    properties_info table, silently dropping every dynamic field on
+    stdClass and similar dynamic objects.
+  - release.yml: Docker tag now lowercases the registry owner and reads
+    the resolved version from a properly declared `needs` dependency.
+  - PECL package name corrected to `parallax` (the channel validator
+    rejects '-' in package names and requires name == providesextension).
+    Project / Debian / Alpine name stays php-parallax.
+  - dev: PHPUnit harness with 33 tests and 2087 assertions covering
+    every callable form, every capture rejection, error isolation,
+    snapshot semantics, real parallelism, large-payload round-trips.
+  - dev: php-cs-fixer and PHPStan level 8 jobs added to CI.
+  - dist: Alpine apk repository workflow publishes signed packages to
+    gh-pages on tag push.
     </notes>
     <contents>
         <dir name="/">

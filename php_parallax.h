@@ -22,7 +22,7 @@
 # error "parallax requires a ZTS (thread-safe) PHP build"
 #endif
 
-#define PHP_PARALLAX_VERSION "0.2.0"
+#define PHP_PARALLAX_VERSION "0.2.1"
 
 extern zend_module_entry parallax_module_entry;
 #define phpext_parallax_ptr &parallax_module_entry
