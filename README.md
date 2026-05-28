@@ -15,7 +15,7 @@ foreach ($wg->wait() as $i => $slot) {
 
 ## Status
 
-**Pre-release (v0.1.0-dev)**. The implementation works on PHP 8.4 ZTS (musl + glibc); the surface is intentionally tiny in v0.1.0 — `WaitGroup`, `ParallaxResult`, `ParallaxWorkerError`, `CaptureError`, `SpawnError`. Closure capture (`fn () use (...)`) is the v0.2.0 milestone; v0.1.0 supports **named functions and static methods** only.
+**v0.2.0 (alpha)**. The implementation works on PHP 8.4 ZTS (musl + glibc); the surface is intentionally tiny — `WaitGroup`, `ParallaxResult`, `ParallaxWorkerError`, `CaptureError`, `SpawnError`. Supported callables: named functions, static methods, first-class callables `Cls::method(...)`, and inline closures `function (...) use (...) { ... }` with by-value capture. Arrow functions (`fn () => ...`) and warm worker pools are tracked for a later release.
 
 ## Why does this exist?
 

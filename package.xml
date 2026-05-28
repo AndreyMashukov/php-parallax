@@ -28,8 +28,8 @@ methods are supported as callables; closure capture is the v0.2.0 milestone.
     </lead>
     <date>2026-05-28</date>
     <version>
-        <release>0.1.0</release>
-        <api>0.1.0</api>
+        <release>0.2.0</release>
+        <api>0.2.0</api>
     </version>
     <stability>
         <release>alpha</release>
@@ -37,9 +37,11 @@ methods are supported as callables; closure capture is the v0.2.0 milestone.
     </stability>
     <license uri="https://opensource.org/licenses/MIT">MIT</license>
     <notes>
-Initial release: WaitGroup binding for PHP 8.4 ZTS. Named functions and static
-methods only — closure capture deferred to v0.2.0. Verified on Alpine (musl)
-and Debian Bookworm (glibc).
+v0.2.0 — inline closure capture lands. `function (...) use (...) { ... }` is
+now a valid callable for `WaitGroup::go()`; captures are deep-cloned by value
+at spawn time (Rust `move` semantics). Rejections: by-reference use, nested
+closures, eval-defined closures, bound $this. 14/14 phpt tests on Alpine
+(musl) and Debian Bookworm (glibc).
     </notes>
     <contents>
         <dir name="/">
@@ -51,6 +53,7 @@ and Debian Bookworm (glibc).
             <file role="src" name="bridge.c"/>
             <file role="src" name="bridge_compat.h"/>
             <file role="src" name="bridge_worker.c"/>
+            <file role="src" name="bridge_closure.c"/>
             <dir name="core">
                 <file role="src" name="waitgroup.h"/>
                 <file role="src" name="waitgroup.c"/>
@@ -72,6 +75,12 @@ and Debian Bookworm (glibc).
                 <file role="test" name="006_count.phpt"/>
                 <file role="test" name="007_thousand_spawns.phpt"/>
                 <file role="test" name="008_recipe_pattern.phpt"/>
+                <file role="test" name="100_inline_closure.phpt"/>
+                <file role="test" name="101_use_by_value_snapshot.phpt"/>
+                <file role="test" name="102_use_by_ref_rejected.phpt"/>
+                <file role="test" name="103_nested_closure_rejected.phpt"/>
+                <file role="test" name="104_eval_closure_rejected.phpt"/>
+                <file role="test" name="105_closure_cache_isolation.phpt"/>
                 <file role="test" name="_bootstrap.inc"/>
             </dir>
             <file role="doc" name="LICENSE"/>
