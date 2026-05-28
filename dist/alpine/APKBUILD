@@ -7,6 +7,10 @@ pkgdesc="PHP WaitGroup + spawn with isolated per-worker runtimes"
 url="https://github.com/AndreyMashukov/php-parallax"
 arch="all"
 license="MIT"
+# php:8.4-zts-alpine compiles PHP into /usr/local, so the extension landing
+# there violates Alpine's FHS policy. The opt-out is deliberate: this package
+# only makes sense on top of the upstream Docker image's /usr/local layout.
+options="!fhs"
 # Stock Alpine ships PHP NTS only; this package targets the ZTS PHP build
 # present in the official php:8.4-zts-alpine Docker image (and any host that
 # carries a compatible ZTS php-config in /usr/local). Hence no apk-level
