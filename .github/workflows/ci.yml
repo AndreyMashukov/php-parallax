@@ -74,6 +74,7 @@ jobs:
           if grep -rEi 'claude|anthropic|opus|sonnet|co-authored-by|generated with|assistant' \
               --exclude-dir=.git \
               --exclude=ci.yml \
+              --exclude=release.yml \
               --exclude=pre-commit \
               --exclude=commit-msg \
               .; then

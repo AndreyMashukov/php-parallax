@@ -7,9 +7,9 @@
                         http://pear.php.net/dtd/tasks-1.0.xsd
                         http://pear.php.net/dtd/package-2.0
                         http://pear.php.net/dtd/package-2.0.xsd">
-    <name>php-parallax</name>
+    <name>parallax</name>
     <channel>pecl.php.net</channel>
-    <summary>Go/Rust-semantic concurrency primitive for PHP — WaitGroup + spawn with isolated per-worker runtimes and snapshot-copy captures.</summary>
+    <summary>Go/Rust-semantic concurrency primitive for PHP — WaitGroup + spawn with isolated per-worker runtimes and snapshot-copy captures. PECL slug is `parallax`; the GitHub repo, Debian/Ubuntu package, Alpine package, and install script are all named `php-parallax` (same convention as the `redis` PECL extension shipping as `php-redis` on Debian).</summary>
     <description>
 php-parallax adds OS-thread parallelism to PHP with Go `go func` and Rust `move`
 semantics: every spawned task runs in its own ZTS thread with a fresh PHP request
