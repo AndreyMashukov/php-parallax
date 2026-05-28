@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 jobs:
   build-and-publish:
@@ -15,47 +16,70 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Build .apk for Alpine 3.20 (php84-zts)
+
+      - name: Bail out if APK signing key is missing
+        env:
+          PRIV: ${{ secrets.APK_PRIVKEY_B64 }}
+        run: |
+          if [ -z "$PRIV" ]; then
+            echo "::warning::APK_PRIVKEY_B64 secret is unset; skipping the apk publish run."
+            echo "skip=yes" >> "$GITHUB_ENV"
+          else
+            echo "skip=no" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build .apk inside php:8.4-zts-alpine (the only ZTS Alpine image)
+        if: env.skip == 'no'
         run: |
           set -eux
           mkdir -p out
-          docker run --rm -v "$PWD:/src" -v "$PWD/out:/out" alpine:3.20 sh -ec '
-            apk add --no-cache alpine-sdk php84-dev php84-zts shadow
+          # The build runs in the official php:8.4-zts-alpine image because
+          # stock Alpine repos do not ship a ZTS PHP build; the only ZTS PHP
+          # on Alpine is the one this image compiles from source. We layer
+          # alpine-sdk + abuild on top to produce a .apk that targets that
+          # exact PHP installation.
+          docker run --rm -v "$PWD:/src" -v "$PWD/out:/out" \
+            -e PRIV="${{ secrets.APK_PRIVKEY_B64 }}" \
+            php:8.4-zts-alpine sh -ec '
+              apk add --no-cache alpine-sdk shadow openssl abuild build-base
+              adduser -D builder
+              addgroup builder abuild
 
-            adduser -D builder
-            addgroup builder abuild
-
-            mkdir -p /home/builder/.abuild
-            echo "${{ secrets.APK_PRIVKEY_B64 }}" | base64 -d > /home/builder/.abuild/andreymashukov.rsa
-            cat /home/builder/.abuild/andreymashukov.rsa | openssl rsa -pubout -out /home/builder/.abuild/andreymashukov.rsa.pub
-            chown -R builder:abuild /home/builder/.abuild
-            chmod 600 /home/builder/.abuild/andreymashukov.rsa
-            cat > /home/builder/.abuild/abuild.conf <<EOF
+              mkdir -p /home/builder/.abuild
+              echo "$PRIV" | base64 -d > /home/builder/.abuild/andreymashukov.rsa
+              openssl rsa -in /home/builder/.abuild/andreymashukov.rsa \
+                -pubout -out /home/builder/.abuild/andreymashukov.rsa.pub
+              chown -R builder:abuild /home/builder/.abuild
+              chmod 600 /home/builder/.abuild/andreymashukov.rsa
+              cat > /home/builder/.abuild/abuild.conf <<EOF
           PACKAGER_PRIVKEY=/home/builder/.abuild/andreymashukov.rsa
           EOF
-            cp /home/builder/.abuild/andreymashukov.rsa.pub /etc/apk/keys/
+              cp /home/builder/.abuild/andreymashukov.rsa.pub /etc/apk/keys/
 
-            cp -r /src /home/builder/php-parallax
-            chown -R builder:abuild /home/builder/php-parallax
+              cp -r /src /home/builder/php-parallax
+              chown -R builder:abuild /home/builder/php-parallax
 
-            su builder -c "cd /home/builder/php-parallax/dist/alpine && abuild checksum && abuild -F -r"
+              su builder -c "cd /home/builder/php-parallax/dist/alpine && abuild checksum && abuild -F -r"
 
-            cp /home/builder/packages/alpine/x86_64/*.apk /out/
-            cp /home/builder/.abuild/andreymashukov.rsa.pub /out/
-          '
+              cp /home/builder/packages/alpine/x86_64/*.apk /out/
+              cp /home/builder/.abuild/andreymashukov.rsa.pub /out/
+            '
+
       - name: Restructure for gh-pages publish
+        if: env.skip == 'no'
         run: |
           set -eux
           VERSION="${GITHUB_REF_NAME#v}"
-          mkdir -p site/alpine/v3.20/community/x86_64 site/alpine/keys
-          cp out/*.apk site/alpine/v3.20/community/x86_64/
+          mkdir -p site/alpine/zts/x86_64 site/alpine/keys
+          cp out/*.apk site/alpine/zts/x86_64/
           cp out/*.rsa.pub site/alpine/keys/
-          # APKINDEX
-          docker run --rm -v "$PWD/site:/site" alpine:3.20 sh -ec '
+
+          docker run --rm -v "$PWD/site:/site" alpine:edge sh -ec '
             apk add --no-cache apk-tools
-            cd /site/alpine/v3.20/community/x86_64
+            cd /site/alpine/zts/x86_64
             apk index -o APKINDEX.tar.gz *.apk
           '
+
           cat > site/index.html <<HTML
           <!doctype html>
           <html lang="en">
@@ -63,17 +87,24 @@ jobs:
           <body>
             <h1>php-parallax — Alpine apk repository</h1>
             <p>Version: ${VERSION}</p>
+            <p>This repository ships <code>.apk</code> packages built against the official
+              <code>php:8.4-zts-alpine</code> Docker image, which compiles PHP from source
+              with <code>--enable-zts</code>. Stock Alpine repos do not yet provide a ZTS
+              PHP, so these packages are only safe to install on hosts running the same
+              ZTS PHP build (the official Docker image is the canonical match).</p>
             <pre>
           curl -fsSL https://andreymashukov.github.io/php-parallax/alpine/keys/andreymashukov.rsa.pub \\
-              > /etc/apk/keys/andreymashukov.rsa.pub
-          echo "https://andreymashukov.github.io/php-parallax/alpine/v3.20/community" \\
-              >> /etc/apk/repositories
-          apk update && apk add php-parallax
+              &gt; /etc/apk/keys/andreymashukov.rsa.pub
+          echo "https://andreymashukov.github.io/php-parallax/alpine/zts/" \\
+              &gt;&gt; /etc/apk/repositories
+          apk update &amp;&amp; apk add php-parallax
             </pre>
           </body>
           </html>
           HTML
+
       - uses: peaceiris/actions-gh-pages@v4
+        if: env.skip == 'no'
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./site

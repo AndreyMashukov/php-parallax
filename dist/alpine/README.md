@@ -12,7 +12,7 @@ curl -fsSL https://andreymashukov.github.io/php-parallax/alpine/keys/andreymashu
     > /etc/apk/keys/andreymashukov.rsa.pub
 
 # Register the third-party repository
-echo "https://andreymashukov.github.io/php-parallax/alpine/v3.20/community" \
+echo "https://andreymashukov.github.io/php-parallax/alpine/zts/" \
     >> /etc/apk/repositories
 
 # Install
@@ -25,8 +25,8 @@ apk add php-parallax
 ## Building the .apk locally
 
 ```sh
-docker run --rm -it -v "$PWD:/src" -w /src/dist/alpine alpine:3.20 sh -c '
-  apk add --no-cache alpine-sdk php84-dev php84-zts
+docker run --rm -it -v "$PWD:/src" -w /src/dist/alpine alpine:edge sh -c '
+  apk add --no-cache alpine-sdk php84-dev php84-embed php84-pecl-zts
   adduser -D builder && addgroup builder abuild
   su builder -c "abuild-keygen -ain && abuild -F"
 '

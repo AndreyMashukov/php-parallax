@@ -65,20 +65,20 @@ Use something else when:
 
 ### `apk add` on Alpine (project-hosted apk repository)
 
+The repository is built against the official **`php:8.4-zts-alpine`** Docker image — stock Alpine doesn't yet ship a ZTS PHP, so the `.apk` artefacts are only safe to install on hosts running the same ZTS PHP build that image compiles from source. The Docker image itself is the canonical match.
+
 ```sh
 # Trust the project's signing key (one-time)
 curl -fsSL https://andreymashukov.github.io/php-parallax/alpine/keys/andreymashukov.rsa.pub \
     > /etc/apk/keys/andreymashukov.rsa.pub
 
 # Register the repository
-echo "https://andreymashukov.github.io/php-parallax/alpine/v3.20/community" \
+echo "https://andreymashukov.github.io/php-parallax/alpine/zts/" \
     >> /etc/apk/repositories
 
 # Install
 apk update && apk add php-parallax
 ```
-
-The package alias `php-parallax` is provided by `php84-parallax`; pinning to a specific PHP version is optional.
 
 ### `pecl install` (PECL channel)
 

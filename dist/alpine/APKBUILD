@@ -1,34 +1,36 @@
 # Maintainer: Andrei Mashukov <a.mashukoff@gmail.com>
 # Contributor: Andrei Mashukov <a.mashukoff@gmail.com>
-pkgname=php84-parallax
+pkgname=php-parallax
 pkgver=0.2.1
 pkgrel=0
 pkgdesc="Go/Rust-semantic concurrency primitive for PHP — WaitGroup + spawn with isolated per-worker runtimes and snapshot-copy captures"
 url="https://github.com/AndreyMashukov/php-parallax"
 arch="all"
 license="MIT"
-depends="php84"
-makedepends="php84-dev php84-zts autoconf gcc make musl-dev"
+# Stock Alpine ships PHP NTS only; this package targets the ZTS PHP build
+# present in the official php:8.4-zts-alpine Docker image (and any host that
+# carries a compatible ZTS php-config in /usr/local). Hence no apk-level
+# depends/makedepends — the dependency is the in-image php toolchain.
+depends=""
+makedepends="autoconf gcc make musl-dev"
 subpackages=""
 source="$pkgname-$pkgver.tar.gz::https://github.com/AndreyMashukov/php-parallax/archive/refs/tags/v$pkgver.tar.gz"
 builddir="$srcdir/php-parallax-$pkgver"
 
-# Provided as a convenience alias so users can `apk add php-parallax` without
-# remembering the PHP version suffix.
-provides="php-parallax=$pkgver-r$pkgrel"
+# Aliases users might reach for.
+provides="php84-parallax=$pkgver-r$pkgrel"
 
 build() {
 	cd "$builddir"
 	# Hard-fail on non-ZTS PHP — the extension's #ifndef ZTS guard would
 	# otherwise produce a confusing compile error.
-	if ! php-config --enable-zts 2>/dev/null | grep -q yes \
-		&& ! php -r 'exit((int)!ZEND_THREAD_SAFE);'; then
+	if ! php -r 'exit((int)!ZEND_THREAD_SAFE);'; then
 		msg "FATAL: php-parallax requires a ZTS PHP build"
 		return 1
 	fi
 
-	phpize84
-	./configure --with-php-config=/usr/bin/php-config84 --enable-parallax
+	phpize
+	./configure --enable-parallax
 	make -j"$(nproc)"
 }
 
@@ -39,16 +41,19 @@ check() {
 
 package() {
 	cd "$builddir"
-	local extdir
-	extdir=$(/usr/bin/php-config84 --extension-dir)
+	local extdir confdir
+	extdir=$(php-config --extension-dir)
+	confdir=$(php -i | awk -F'=> ' '/Scan this dir/ { print $2; exit }')
 	install -d "$pkgdir$extdir"
 	install -m 644 modules/parallax.so "$pkgdir$extdir/parallax.so"
 
-	install -d "$pkgdir/etc/php84/conf.d"
-	cat > "$pkgdir/etc/php84/conf.d/50_parallax.ini" <<-EOF
-		; Enables the php-parallax extension. See https://github.com/AndreyMashukov/php-parallax
-		extension=parallax.so
-	EOF
+	if [ -n "$confdir" ] && [ "$confdir" != "(none)" ]; then
+		install -d "$pkgdir$confdir"
+		cat > "$pkgdir$confdir/50_parallax.ini" <<-EOF
+			; Enables the php-parallax extension. See https://github.com/AndreyMashukov/php-parallax
+			extension=parallax.so
+		EOF
+	fi
 }
 
 sha512sums=""
