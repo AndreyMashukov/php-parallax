@@ -13,6 +13,7 @@ if test "$PHP_PARALLAX" != "no"; then
     php_binding.c \
     bridge.c \
     bridge_worker.c \
+    bridge_closure.c \
     core/waitgroup.c \
     value/value.c \
     value/pack.c \

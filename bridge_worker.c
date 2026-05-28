@@ -2,6 +2,7 @@
 #include "php_parallax.h"
 
 #include <Zend/zend_API.h>
+#include <Zend/zend_closures.h>
 #include <Zend/zend_exceptions.h>
 #include <Zend/zend_stream.h>
 #include <TSRM.h>
@@ -155,14 +156,105 @@ static void *worker_main_thread(void *task_void)
 			goto shutdown;
 		}
 
-		/* Build zend_fcall_info{,_cache} for either a free function or a static method. */
+		/* Build zend_fcall_info{,_cache} for the resolved callable. The
+		 * CLOSURE branch compiles the captured source text on-the-fly and
+		 * materialises a real PHP Closure object in this thread. */
 		zval callable_zv;
+		ZVAL_UNDEF(&callable_zv);
+
 		if (payload->callable.kind == PX_CALL_KIND_FUNCTION) {
 			ZVAL_STRING(&callable_zv, payload->callable.fn_name);
-		} else {
+		} else if (payload->callable.kind == PX_CALL_KIND_STATIC_METH) {
 			array_init(&callable_zv);
 			add_next_index_string(&callable_zv, payload->callable.class_name);
 			add_next_index_string(&callable_zv, payload->callable.fn_name);
+		} else if (payload->callable.kind == PX_CALL_KIND_CLOSURE) {
+			zval factory_zv;
+			ZVAL_UNDEF(&factory_zv);
+			zend_op_array *op_array = zend_compile_string(
+				zend_string_init(payload->callable.closure_wrapper, strlen(payload->callable.closure_wrapper), 0),
+				"parallax://closure",
+				ZEND_COMPILE_POSITION_AT_OPEN_TAG);
+			if (op_array == NULL || EG(exception) != NULL) {
+				task->ok = false;
+				if (worker_captured_error != NULL) {
+					task->error = worker_captured_error;
+					worker_captured_error = NULL;
+				} else if (EG(exception) != NULL) {
+					zend_object *ex = EG(exception);
+					EG(exception) = NULL;
+					task->error = exception_to_value(ex);
+					OBJ_RELEASE(ex);
+				} else {
+					task->error = value_err("CompileError", "closure source failed to compile", 0, "");
+				}
+				if (op_array != NULL) destroy_op_array(op_array);
+				goto shutdown;
+			}
+			/* Execute the factory op_array to obtain the inner closure. */
+			zval factory_retval;
+			ZVAL_UNDEF(&factory_retval);
+			EG(no_extensions) = 1;
+			zend_execute(op_array, &factory_retval);
+			EG(no_extensions) = 0;
+			destroy_op_array(op_array);
+			efree(op_array);
+
+			if (worker_captured_error != NULL) {
+				task->ok = false;
+				task->error = worker_captured_error;
+				worker_captured_error = NULL;
+				zval_ptr_dtor(&factory_retval);
+				goto shutdown;
+			}
+			if (EG(exception) != NULL) {
+				zend_object *ex = EG(exception);
+				EG(exception) = NULL;
+				task->ok = false;
+				task->error = exception_to_value(ex);
+				OBJ_RELEASE(ex);
+				zval_ptr_dtor(&factory_retval);
+				goto shutdown;
+			}
+
+			if (Z_TYPE(factory_retval) != IS_OBJECT
+				|| !instanceof_function(Z_OBJCE(factory_retval), zend_ce_closure)) {
+				task->ok = false;
+				task->error = value_err("LogicError", "closure wrapper did not return a Closure", 0, "");
+				zval_ptr_dtor(&factory_retval);
+				goto shutdown;
+			}
+
+			/* Invoke the factory(cap-array) → inner closure. */
+			zval cap_zv;
+			px_value_to_zval(payload->callable.closure_captures, &cap_zv);
+			zval inner;
+			ZVAL_UNDEF(&inner);
+			zval factory_args[1];
+			ZVAL_COPY_VALUE(&factory_args[0], &cap_zv);
+
+			int rc_factory = call_user_function(NULL, NULL, &factory_retval, &inner, 1, factory_args);
+			zval_ptr_dtor(&cap_zv);
+			zval_ptr_dtor(&factory_retval);
+
+			if (rc_factory != SUCCESS || Z_TYPE(inner) != IS_OBJECT) {
+				task->ok = false;
+				if (worker_captured_error != NULL) {
+					task->error = worker_captured_error;
+					worker_captured_error = NULL;
+				} else if (EG(exception) != NULL) {
+					zend_object *ex = EG(exception);
+					EG(exception) = NULL;
+					task->error = exception_to_value(ex);
+					OBJ_RELEASE(ex);
+				} else {
+					task->error = value_err("LogicError", "closure factory invocation failed", 0, "");
+				}
+				zval_ptr_dtor(&inner);
+				goto shutdown;
+			}
+
+			ZVAL_COPY_VALUE(&callable_zv, &inner);
 		}
 
 		uint32_t argc = (uint32_t)zend_hash_num_elements(Z_ARRVAL(args_zv));

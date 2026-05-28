@@ -8,16 +8,20 @@
  * across to a worker thread. v1 supports named functions and static methods;
  * inline closures with `use(...)` captures are deferred to v0.2.0. */
 typedef enum {
-	PX_CALL_KIND_FUNCTION    = 1,   /* "fname"                  */
-	PX_CALL_KIND_STATIC_METH = 2,   /* "ClassName::method"      */
+	PX_CALL_KIND_FUNCTION    = 1,   /* "fname"                                */
+	PX_CALL_KIND_STATIC_METH = 2,   /* "ClassName::method"                    */
+	PX_CALL_KIND_CLOSURE     = 3,   /* inline `function (...) use (...) {...}` */
 } px_call_kind_t;
 
 typedef struct {
 	px_call_kind_t kind;
 	char *class_name;     /* NULL for FUNCTION; otherwise malloc'd */
-	char *fn_name;        /* malloc'd; never NULL */
+	char *fn_name;        /* malloc'd; never NULL for FUNCTION / STATIC_METH */
 	char *bootstrap;      /* malloc'd or NULL; absolute path to a PHP file
 	                         the worker should require before resolving fn */
+	/* CLOSURE-only payload — both NULL for FUNCTION / STATIC_METH. */
+	char    *closure_wrapper; /* malloc'd; <?php return static function (array $__cv) { ... }; */
+	value_t *closure_captures;/* malloc'd VAL_ARR: name => snapshot */
 } px_callable_t;
 
 void px_callable_free(px_callable_t *c);
@@ -39,5 +43,9 @@ void px_value_to_zval(const value_t *v, zval *out);
 
 /* Worker entry — defined in bridge_worker.c. Runs inside the spawned thread. */
 void px_worker_main(task_t *task);
+
+/* Inline-closure helpers — defined in bridge_closure.c.
+ * Caller owns the resulting buffers when the call returns 0. */
+int  px_resolve_inline_closure(zval *closure_zv, px_callable_t *out);
 
 #endif /* PARALLAX_BRIDGE_H */

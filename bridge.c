@@ -19,9 +19,13 @@ void px_callable_free(px_callable_t *c)
 	free(c->class_name);
 	free(c->fn_name);
 	free(c->bootstrap);
+	free(c->closure_wrapper);
+	value_free(c->closure_captures);
 	c->class_name = NULL;
 	c->fn_name = NULL;
 	c->bootstrap = NULL;
+	c->closure_wrapper = NULL;
+	c->closure_captures = NULL;
 }
 
 static char *strdup_or_die(const char *src, size_t len)
@@ -98,30 +102,29 @@ int px_resolve_callable(zval *callable, px_callable_t *out)
 		return -1;
 	}
 
-	/* Closure — accept only first-class-callable form for v1; reject inline. */
+	/* Closure — accept both first-class-callable and inline forms. */
 	if (Z_TYPE_P(callable) == IS_OBJECT && instanceof_function(Z_OBJCE_P(callable), zend_ce_closure)) {
 		const zend_function *fn = zend_get_closure_method_def(Z_OBJ_P(callable));
 		if (fn == NULL) {
 			throw_spawn_error("could not introspect Closure");
 			return -1;
 		}
-		/* First-class callable wraps a named function or method without bound use(...).
-		 * Inline closures carry ZEND_ACC_FAKE_CLOSURE off and may have bound variables. */
-		if (!(fn->common.fn_flags & ZEND_ACC_FAKE_CLOSURE)) {
-			throw_capture_error("inline closures are not supported in v1; use first-class callable syntax Cls::method(...)");
-			return -1;
+		/* First-class callable (Cls::method(...) / fname(...)) carries the
+		 * ZEND_ACC_FAKE_CLOSURE flag; inline `function () use (...) {}` does not. */
+		if (fn->common.fn_flags & ZEND_ACC_FAKE_CLOSURE) {
+			zend_string *name = fn->common.function_name;
+			zend_class_entry *scope = fn->common.scope;
+			if (scope != NULL) {
+				out->kind = PX_CALL_KIND_STATIC_METH;
+				out->class_name = strdup_or_die(ZSTR_VAL(scope->name), ZSTR_LEN(scope->name));
+				out->fn_name = strdup_or_die(ZSTR_VAL(name), ZSTR_LEN(name));
+			} else {
+				out->kind = PX_CALL_KIND_FUNCTION;
+				out->fn_name = strdup_or_die(ZSTR_VAL(name), ZSTR_LEN(name));
+			}
+			return 0;
 		}
-		zend_string *name = fn->common.function_name;
-		zend_class_entry *scope = fn->common.scope;
-		if (scope != NULL) {
-			out->kind = PX_CALL_KIND_STATIC_METH;
-			out->class_name = strdup_or_die(ZSTR_VAL(scope->name), ZSTR_LEN(scope->name));
-			out->fn_name = strdup_or_die(ZSTR_VAL(name), ZSTR_LEN(name));
-		} else {
-			out->kind = PX_CALL_KIND_FUNCTION;
-			out->fn_name = strdup_or_die(ZSTR_VAL(name), ZSTR_LEN(name));
-		}
-		return 0;
+		return px_resolve_inline_closure(callable, out);
 	}
 
 	throw_spawn_error("unsupported callable type for parallax");
