@@ -46,3 +46,7 @@ tests/*.sh
 .DS_Store
 compile_commands.json
 .cache/
+*.dep
+confdefs.h
+run-tests.php
+tests/c/build-out/
