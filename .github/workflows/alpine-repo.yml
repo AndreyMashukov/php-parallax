@@ -41,6 +41,7 @@ jobs:
           docker run --rm -v "$PWD:/src" -v "$PWD/out:/out" \
             -e PRIV="${{ secrets.APK_PRIVKEY_B64 }}" \
             php:8.4-zts-alpine sh -ec '
+              apk update
               apk add --no-cache alpine-sdk shadow openssl abuild build-base
               adduser -D builder
               addgroup builder abuild
