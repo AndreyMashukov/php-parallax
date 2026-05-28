@@ -8,27 +8,28 @@ use Amashukov\PhpParallax\Tests\Fixtures\Worker;
 use Amashukov\PhpParallax\Tests\Helpers\PathHelper;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use WaitGroup;
 
 final class WaitGroupTest extends TestCase
 {
     #[Test]
     public function constructorWithoutBootstrap(): void
     {
-        $wg = new \WaitGroup();
+        $wg = new WaitGroup();
         self::assertSame(0, $wg->count());
     }
 
     #[Test]
     public function constructorWithBootstrap(): void
     {
-        $wg = new \WaitGroup(PathHelper::bootstrap());
+        $wg = new WaitGroup(PathHelper::bootstrap());
         self::assertSame(0, $wg->count());
     }
 
     #[Test]
     public function countTracksSpawnedTasks(): void
     {
-        $wg = new \WaitGroup(PathHelper::bootstrap());
+        $wg = new WaitGroup(PathHelper::bootstrap());
 
         self::assertSame(0, $wg->count());
 
@@ -44,14 +45,13 @@ final class WaitGroupTest extends TestCase
     #[Test]
     public function waitReturnsArrayIndexedBySpawnOrder(): void
     {
-        $wg = new \WaitGroup(PathHelper::bootstrap());
+        $wg = new WaitGroup(PathHelper::bootstrap());
         $wg->go(Worker::identity(...), [10]);
         $wg->go(Worker::identity(...), [20]);
         $wg->go(Worker::identity(...), [30]);
 
         $results = $wg->wait();
 
-        self::assertIsArray($results);
         self::assertCount(3, $results);
         self::assertSame(10, $results[0]->value);
         self::assertSame(20, $results[1]->value);
@@ -61,7 +61,7 @@ final class WaitGroupTest extends TestCase
     #[Test]
     public function emptyWaitGroupYieldsEmptyArray(): void
     {
-        $wg = new \WaitGroup(PathHelper::bootstrap());
+        $wg = new WaitGroup(PathHelper::bootstrap());
         self::assertSame([], $wg->wait());
     }
 }

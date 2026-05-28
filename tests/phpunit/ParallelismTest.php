@@ -8,6 +8,7 @@ use Amashukov\PhpParallax\Tests\Fixtures\Worker;
 use Amashukov\PhpParallax\Tests\Helpers\PathHelper;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use WaitGroup;
 
 /**
  * These tests assert *real* OS-thread parallelism, not cooperative interleaving.
@@ -23,7 +24,7 @@ final class ParallelismTest extends TestCase
         $sleepMicro = 250_000; // 250 ms per task
         $tasks = 4;
 
-        $wg = new \WaitGroup(PathHelper::bootstrap());
+        $wg = new WaitGroup(PathHelper::bootstrap());
         $start = hrtime(true);
         for ($i = 0; $i < $tasks; $i++) {
             $wg->go(Worker::sleepThenReturn(...), [$sleepMicro, $i]);
@@ -75,7 +76,7 @@ final class ParallelismTest extends TestCase
         $serialMs = (hrtime(true) - $serialStart) / 1_000_000.0;
 
         // Parallel: same total work across worker threads.
-        $wg = new \WaitGroup(PathHelper::bootstrap());
+        $wg = new WaitGroup(PathHelper::bootstrap());
         $parallelStart = hrtime(true);
         for ($i = 0; $i < $chunks; $i++) {
             $wg->go(Worker::cpuHeavy(...), [$i * $chunkSize, ($i + 1) * $chunkSize]);
@@ -106,7 +107,7 @@ final class ParallelismTest extends TestCase
     #[Test]
     public function fanOutThousandSpawns(): void
     {
-        $wg = new \WaitGroup();
+        $wg = new WaitGroup();
         for ($i = 0; $i < 1000; $i++) {
             $wg->go('intval', [(string) $i]);
         }

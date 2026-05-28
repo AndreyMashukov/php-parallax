@@ -9,5 +9,5 @@ parameters:
         - examples
     excludePaths:
         - tests/phpunit/bootstrap.php
-    stubFiles:
-        - phpstan-stubs/Parallax.stub
+    scanFiles:
+        - phpstan-stubs/Parallax.php

@@ -8,13 +8,14 @@ use Amashukov\PhpParallax\Tests\Fixtures\Worker;
 use Amashukov\PhpParallax\Tests\Helpers\PathHelper;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use WaitGroup;
 
 final class LargePayloadTest extends TestCase
 {
     #[Test]
     public function returnsLargeArrayPayload(): void
     {
-        $wg = new \WaitGroup(PathHelper::bootstrap());
+        $wg = new WaitGroup(PathHelper::bootstrap());
         $wg->go(Worker::bigPayload(...), [2000]);
         $r = $wg->wait();
 
@@ -29,7 +30,7 @@ final class LargePayloadTest extends TestCase
     {
         $big = str_repeat('abcde', 50_000); // 250 kB string
 
-        $wg = new \WaitGroup();
+        $wg = new WaitGroup();
         $wg->go('strlen', [$big]);
         $wg->go('md5', [$big]);
         $r = $wg->wait();
@@ -46,7 +47,7 @@ final class LargePayloadTest extends TestCase
             $deep = ['next' => $deep];
         }
 
-        $wg = new \WaitGroup();
+        $wg = new WaitGroup();
         $wg->go(static function (array $tree): string {
             $cur = $tree;
             while (isset($cur['next'])) {

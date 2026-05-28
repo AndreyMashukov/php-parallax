@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Amashukov\PhpParallax\Tests\Fixtures;
 
+use LogicException;
+use RuntimeException;
+
 /**
  * Worker payloads invoked by parallax inside worker threads. The class must
  * be visible to the worker via the bootstrap file at tests/phpunit/bootstrap.php.
@@ -39,14 +42,17 @@ final class Worker
 
     public static function panic(string $message = 'kapow'): never
     {
-        throw new \RuntimeException($message);
+        throw new RuntimeException($message);
     }
 
     public static function panicLogic(string $message): never
     {
-        throw new \LogicException($message);
+        throw new LogicException($message);
     }
 
+    /**
+     * @return list<array{i: int, tag: string}>
+     */
     public static function bigPayload(int $n): array
     {
         $out = [];

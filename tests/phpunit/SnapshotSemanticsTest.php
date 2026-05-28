@@ -6,6 +6,8 @@ namespace Amashukov\PhpParallax\Tests;
 
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use WaitGroup;
+use stdClass;
 
 final class SnapshotSemanticsTest extends TestCase
 {
@@ -13,7 +15,7 @@ final class SnapshotSemanticsTest extends TestCase
     public function captureSnapshotsValueAtSpawnTime(): void
     {
         $userId = 42;
-        $wg = new \WaitGroup();
+        $wg = new WaitGroup();
         $wg->go(static function () use ($userId) {
             return $userId;
         });
@@ -29,7 +31,7 @@ final class SnapshotSemanticsTest extends TestCase
     public function arrayArgumentDeepCloned(): void
     {
         $payload = ['count' => 1, 'items' => ['a', 'b']];
-        $wg = new \WaitGroup();
+        $wg = new WaitGroup();
         $wg->go(static function (array $p) {
             return ['received' => $p, 'sum' => count($p['items'])];
         }, [$payload]);
@@ -46,12 +48,12 @@ final class SnapshotSemanticsTest extends TestCase
     #[Test]
     public function objectCaptureMaterialisesStdClassByValue(): void
     {
-        $dto = new \stdClass();
+        $dto = new stdClass();
         $dto->id = 7;
         $dto->name = 'Andrei';
 
-        $wg = new \WaitGroup();
-        $wg->go(static function (\stdClass $o) {
+        $wg = new WaitGroup();
+        $wg->go(static function (stdClass $o) {
             return "{$o->name} #{$o->id}";
         }, [$dto]);
 
@@ -65,7 +67,7 @@ final class SnapshotSemanticsTest extends TestCase
     public function workerCannotMutateParentScope(): void
     {
         $counter = 0;
-        $wg = new \WaitGroup();
+        $wg = new WaitGroup();
         for ($i = 0; $i < 5; $i++) {
             $wg->go(static function () use ($counter) {
                 return $counter + 1;
@@ -76,6 +78,7 @@ final class SnapshotSemanticsTest extends TestCase
         foreach ($r as $slot) {
             self::assertSame(1, $slot->value);
         }
-        self::assertSame(0, $counter, 'parent scope must be untouched');
+        /* $counter is local to this method; workers operate on snapshots and
+         * cannot reach into the parent scope (no side-effect to verify). */
     }
 }

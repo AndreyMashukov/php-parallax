@@ -1,4 +1,6 @@
 <?php
+
+declare(strict_types=1);
 /* CaptureError is raised at go() time when an argument would smuggle a
  * non-portable construct across the thread boundary. */
 

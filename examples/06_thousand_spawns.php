@@ -1,4 +1,6 @@
 <?php
+
+declare(strict_types=1);
 /* Quick sanity sweep: a thousand sequential spawns, all results collected,
  * zero slot loss. */
 

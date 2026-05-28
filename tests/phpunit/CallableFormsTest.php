@@ -8,13 +8,14 @@ use Amashukov\PhpParallax\Tests\Fixtures\Worker;
 use Amashukov\PhpParallax\Tests\Helpers\PathHelper;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use WaitGroup;
 
 final class CallableFormsTest extends TestCase
 {
     #[Test]
     public function internalFunctionByName(): void
     {
-        $wg = new \WaitGroup();
+        $wg = new WaitGroup();
         $wg->go('strlen', ['hello']);
         $wg->go('strtoupper', ['abc']);
         $r = $wg->wait();
@@ -28,7 +29,7 @@ final class CallableFormsTest extends TestCase
     #[Test]
     public function userFunctionRequiresBootstrap(): void
     {
-        $wg = new \WaitGroup(PathHelper::bootstrap());
+        $wg = new WaitGroup(PathHelper::bootstrap());
         $wg->go(Worker::identity(...), [42]);
         $r = $wg->wait();
 
@@ -39,7 +40,7 @@ final class CallableFormsTest extends TestCase
     #[Test]
     public function staticMethodAsString(): void
     {
-        $wg = new \WaitGroup(PathHelper::bootstrap());
+        $wg = new WaitGroup(PathHelper::bootstrap());
         $wg->go(Worker::class . '::square', [7]);
         $r = $wg->wait();
 
@@ -49,7 +50,7 @@ final class CallableFormsTest extends TestCase
     #[Test]
     public function staticMethodAsArray(): void
     {
-        $wg = new \WaitGroup(PathHelper::bootstrap());
+        $wg = new WaitGroup(PathHelper::bootstrap());
         $wg->go([Worker::class, 'square'], [8]);
         $r = $wg->wait();
 
@@ -59,7 +60,7 @@ final class CallableFormsTest extends TestCase
     #[Test]
     public function staticMethodAsFirstClassCallable(): void
     {
-        $wg = new \WaitGroup(PathHelper::bootstrap());
+        $wg = new WaitGroup(PathHelper::bootstrap());
         $wg->go(Worker::square(...), [9]);
         $r = $wg->wait();
 
@@ -72,7 +73,7 @@ final class CallableFormsTest extends TestCase
         $a = 10;
         $b = 20;
 
-        $wg = new \WaitGroup();
+        $wg = new WaitGroup();
         $wg->go(static function () use ($a, $b) {
             return $a + $b;
         });
@@ -84,7 +85,7 @@ final class CallableFormsTest extends TestCase
     #[Test]
     public function inlineClosureWithoutCaptures(): void
     {
-        $wg = new \WaitGroup();
+        $wg = new WaitGroup();
         $wg->go(static function () {
             return 'parameterless';
         });
@@ -97,7 +98,7 @@ final class CallableFormsTest extends TestCase
     public function inlineClosureWithParameters(): void
     {
         $factor = 3;
-        $wg = new \WaitGroup();
+        $wg = new WaitGroup();
         $wg->go(static function (int $x, int $y) use ($factor) {
             return ($x + $y) * $factor;
         }, [4, 5]);
@@ -110,7 +111,7 @@ final class CallableFormsTest extends TestCase
     public function staticInlineClosure(): void
     {
         $offset = 100;
-        $wg = new \WaitGroup();
+        $wg = new WaitGroup();
         $wg->go(static function (int $n) use ($offset) {
             return $n + $offset;
         }, [7]);

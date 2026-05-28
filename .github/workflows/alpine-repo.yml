@@ -1,0 +1,80 @@
+name: Alpine APK Repository
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-publish:
+    name: Build .apk and publish to gh-pages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Build .apk for Alpine 3.20 (php84-zts)
+        run: |
+          set -eux
+          mkdir -p out
+          docker run --rm -v "$PWD:/src" -v "$PWD/out:/out" alpine:3.20 sh -ec '
+            apk add --no-cache alpine-sdk php84-dev php84-zts shadow
+
+            adduser -D builder
+            addgroup builder abuild
+
+            mkdir -p /home/builder/.abuild
+            echo "${{ secrets.APK_PRIVKEY_B64 }}" | base64 -d > /home/builder/.abuild/andreymashukov.rsa
+            cat /home/builder/.abuild/andreymashukov.rsa | openssl rsa -pubout -out /home/builder/.abuild/andreymashukov.rsa.pub
+            chown -R builder:abuild /home/builder/.abuild
+            chmod 600 /home/builder/.abuild/andreymashukov.rsa
+            cat > /home/builder/.abuild/abuild.conf <<EOF
+          PACKAGER_PRIVKEY=/home/builder/.abuild/andreymashukov.rsa
+          EOF
+            cp /home/builder/.abuild/andreymashukov.rsa.pub /etc/apk/keys/
+
+            cp -r /src /home/builder/php-parallax
+            chown -R builder:abuild /home/builder/php-parallax
+
+            su builder -c "cd /home/builder/php-parallax/dist/alpine && abuild checksum && abuild -F -r"
+
+            cp /home/builder/packages/alpine/x86_64/*.apk /out/
+            cp /home/builder/.abuild/andreymashukov.rsa.pub /out/
+          '
+      - name: Restructure for gh-pages publish
+        run: |
+          set -eux
+          VERSION="${GITHUB_REF_NAME#v}"
+          mkdir -p site/alpine/v3.20/community/x86_64 site/alpine/keys
+          cp out/*.apk site/alpine/v3.20/community/x86_64/
+          cp out/*.rsa.pub site/alpine/keys/
+          # APKINDEX
+          docker run --rm -v "$PWD/site:/site" alpine:3.20 sh -ec '
+            apk add --no-cache apk-tools
+            cd /site/alpine/v3.20/community/x86_64
+            apk index -o APKINDEX.tar.gz *.apk
+          '
+          cat > site/index.html <<HTML
+          <!doctype html>
+          <html lang="en">
+          <head><meta charset="utf-8"><title>php-parallax apk repository</title></head>
+          <body>
+            <h1>php-parallax — Alpine apk repository</h1>
+            <p>Version: ${VERSION}</p>
+            <pre>
+          curl -fsSL https://andreymashukov.github.io/php-parallax/alpine/keys/andreymashukov.rsa.pub \\
+              > /etc/apk/keys/andreymashukov.rsa.pub
+          echo "https://andreymashukov.github.io/php-parallax/alpine/v3.20/community" \\
+              >> /etc/apk/repositories
+          apk update && apk add php-parallax
+            </pre>
+          </body>
+          </html>
+          HTML
+      - uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
+          keep_files: true

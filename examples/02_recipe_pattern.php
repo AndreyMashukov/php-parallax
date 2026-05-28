@@ -1,4 +1,6 @@
 <?php
+
+declare(strict_types=1);
 /* "Recipe, not handle": pass DSN + credentials as data; the worker
  * instantiates its own PDO inside the callable. Live connections cannot
  * cross the thread boundary — that is the source of most multi-threaded
@@ -15,7 +17,7 @@ for ($shard = 0; $shard < 4; $shard++) {
 }
 
 $total = array_sum(array_map(
-    fn ($slot) => $slot->ok ? $slot->value : 0,
+    fn($slot) => $slot->ok ? $slot->value : 0,
     $wg->wait(),
 ));
 echo "total = {$total}\n";

@@ -1,4 +1,6 @@
 <?php
+
+declare(strict_types=1);
 /* CPU fan-out: four cores chew through a 100-million-iteration loop in
  * parallel. Fibers / amphp cannot do this — they share one OS thread. */
 
@@ -11,7 +13,7 @@ for ($c = 0; $c < 4; $c++) {
 }
 
 $sum = array_sum(array_map(
-    fn ($slot) => $slot->ok ? $slot->value : 0,
+    fn($slot) => $slot->ok ? $slot->value : 0,
     $wg->wait(),
 ));
 echo "sum = {$sum}\n";
