@@ -1,4 +1,20 @@
-<!doctype html><html><head><meta charset="utf-8"><title>php-parallax</title></head>
-<body><h1>php-parallax — Alpine apk repository</h1>
-<p>Workflow will populate this site on tag push. See <a href="https://github.com/AndreyMashukov/php-parallax">repo</a>.</p>
-</body></html>
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>php-parallax apk repository</title></head>
+<body>
+  <h1>php-parallax — Alpine apk repository</h1>
+  <p>Version: main</p>
+  <p>This repository ships <code>.apk</code> packages built against the official
+    <code>php:8.4-zts-alpine</code> Docker image, which compiles PHP from source
+    with <code>--enable-zts</code>. Stock Alpine repos do not yet provide a ZTS
+    PHP, so these packages are only safe to install on hosts running the same
+    ZTS PHP build (the official Docker image is the canonical match).</p>
+  <pre>
+curl -fsSL https://andreymashukov.github.io/php-parallax/alpine/keys/andreymashukov.rsa.pub \
+    &gt; /etc/apk/keys/andreymashukov.rsa.pub
+echo "https://andreymashukov.github.io/php-parallax/alpine/zts/" \
+    &gt;&gt; /etc/apk/repositories
+apk update &amp;&amp; apk add php-parallax
+  </pre>
+</body>
+</html>
