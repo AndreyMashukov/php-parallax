@@ -76,9 +76,13 @@ jobs:
           cp out/*.rsa.pub site/alpine/keys/
 
           docker run --rm -v "$PWD/site:/site" alpine:edge sh -ec '
-            apk add --no-cache apk-tools
+            apk add --no-cache apk-tools abuild
+            cp /site/alpine/keys/*.rsa.pub /etc/apk/keys/
             cd /site/alpine/zts/x86_64
             apk index -o APKINDEX.tar.gz *.apk
+            # apk index produces an unsigned APKINDEX; users add the pub key
+            # to /etc/apk/keys and apk-tools accepts both the index and the
+            # apk artefacts because we signed each .apk during abuild.
           '
 
           cat > site/index.html <<HTML
