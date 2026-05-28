@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  c-asan:
+    name: C unit tests (ASAN+UBSAN)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install clang
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends clang make
+      - name: value-test
+        run: make -f Makefile.dev value-test
+      - name: core-test
+        run: make -f Makefile.dev core-test
+      - name: stress-test (1k spawns)
+        run: make -f Makefile.dev stress-test
+
+  ext-matrix:
+    name: ext build + .phpt (${{ matrix.image }})
+    runs-on: ubuntu-latest
+    needs: c-asan
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - php:8.4-zts-alpine
+          - php:8.4-zts-bookworm
+    container:
+      image: ${{ matrix.image }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify ZTS
+        run: |
+          if [ "$(php -r 'echo ZEND_THREAD_SAFE ? 1 : 0;')" != "1" ]; then
+            echo "FATAL: base image is NOT ZTS"
+            exit 1
+          fi
+      - name: Install build deps (alpine)
+        if: contains(matrix.image, 'alpine')
+        run: apk add --no-cache $PHPIZE_DEPS clang make
+      - name: Install build deps (bookworm)
+        if: contains(matrix.image, 'bookworm')
+        run: apt-get update && apt-get install -y --no-install-recommends autoconf gcc clang make
+      - name: Build extension
+        run: make -f Makefile.dev ext-build
+      - name: Run .phpt
+        run: make -f Makefile.dev ext-test
+
+  leak-gate:
+    name: 10k-spawn leak gate
+    runs-on: ubuntu-latest
+    needs: ext-matrix
+    container:
+      image: php:8.4-zts-bookworm
+    steps:
+      - uses: actions/checkout@v4
+      - run: apt-get update && apt-get install -y --no-install-recommends autoconf gcc clang make
+      - run: make -f Makefile.dev leak-test
+
+  ai-trace-audit:
+    name: AI-trace audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan tracked files
+        run: |
+          if grep -rEi 'claude|anthropic|opus|sonnet|co-authored-by|generated with|assistant' \
+              --exclude-dir=.git \
+              --exclude=ci.yml \
+              --exclude=pre-commit \
+              --exclude=commit-msg \
+              .; then
+            echo "FATAL: AI traces found in tracked files"
+            exit 1
+          fi
+      - name: Scan commit messages
+        run: |
+          if git log --format='%B' | grep -Ei 'claude|anthropic|opus|sonnet|co-authored-by|generated with|assistant'; then
+            echo "FATAL: AI traces in commit history"
+            exit 1
+          fi
+      - name: Verify author identity
+        run: |
+          authors=$(git log --format='%ae' | sort -u)
+          if [ "$authors" != "a.mashukoff@gmail.com" ]; then
+            echo "FATAL: unexpected author(s): $authors"
+            exit 1
+          fi

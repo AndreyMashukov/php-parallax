@@ -1,0 +1,15 @@
+#!/bin/sh
+# commit-msg hook for php-parallax
+# - block AI-trace strings in commit messages
+# - reject Co-Authored-By trailers
+
+msg_file="$1"
+PATTERN='claude|anthropic|opus|sonnet|Co-Authored-By|Co-authored-by|Generated with|assistant'
+
+if grep -Ei "$PATTERN" "$msg_file" >/dev/null; then
+    echo "commit-msg: AI-trace pattern in message"
+    grep -Eni "$PATTERN" "$msg_file"
+    exit 1
+fi
+
+exit 0

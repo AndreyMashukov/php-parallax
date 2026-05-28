@@ -1,0 +1,39 @@
+#!/bin/sh
+# pre-commit hook for php-parallax
+# - block AI-trace strings in staged content and commit messages
+# - enforce author identity Andrei Mashukov <a.mashukoff@gmail.com>
+
+set -e
+
+PATTERN='claude|anthropic|opus|sonnet|co-authored-by|Generated with|assistant'
+
+# Staged content
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+if [ -n "$staged" ]; then
+    for f in $staged; do
+        case "$f" in
+            .githooks/pre-commit) continue ;;
+            .githooks/commit-msg) continue ;;
+            .github/workflows/ci.yml) continue ;;
+        esac
+        if git show ":$f" 2>/dev/null | grep -Ei "$PATTERN" >/dev/null; then
+            echo "pre-commit: AI-trace pattern matched in $f"
+            git show ":$f" | grep -Eni "$PATTERN" | head -5
+            exit 1
+        fi
+    done
+fi
+
+# Author identity
+expected_email="a.mashukoff@gmail.com"
+expected_name="Andrei Mashukov"
+actual_email=$(git config user.email)
+actual_name=$(git config user.name)
+if [ "$actual_email" != "$expected_email" ] || [ "$actual_name" != "$expected_name" ]; then
+    echo "pre-commit: author mismatch"
+    echo "  expected: $expected_name <$expected_email>"
+    echo "  actual:   $actual_name <$actual_email>"
+    exit 1
+fi
+
+exit 0
