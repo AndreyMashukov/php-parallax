@@ -62,7 +62,14 @@ jobs:
 
               su builder -c "cd /home/builder/php-parallax/dist/alpine && abuild checksum && abuild -F -r"
 
+              # Build a signed APKINDEX inside the same container — the
+              # private key only lives here, and an unsigned index is
+              # rejected by apk-tools with UNTRUSTED signature.
+              cd /home/builder/packages/dist/x86_64
+              su builder -c "cd /home/builder/packages/dist/x86_64 && apk index -o APKINDEX.tar.gz *.apk && abuild-sign -k /home/builder/.abuild/andreymashukov.rsa APKINDEX.tar.gz"
+
               cp /home/builder/packages/dist/x86_64/*.apk /out/
+              cp /home/builder/packages/dist/x86_64/APKINDEX.tar.gz /out/
               cp /home/builder/.abuild/andreymashukov.rsa.pub /out/
             '
 
@@ -73,17 +80,8 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           mkdir -p site/alpine/zts/x86_64 site/alpine/keys
           cp out/*.apk site/alpine/zts/x86_64/
+          cp out/APKINDEX.tar.gz site/alpine/zts/x86_64/
           cp out/*.rsa.pub site/alpine/keys/
-
-          docker run --rm -v "$PWD/site:/site" alpine:edge sh -ec '
-            apk add --no-cache apk-tools abuild
-            cp /site/alpine/keys/*.rsa.pub /etc/apk/keys/
-            cd /site/alpine/zts/x86_64
-            apk index -o APKINDEX.tar.gz *.apk
-            # apk index produces an unsigned APKINDEX; users add the pub key
-            # to /etc/apk/keys and apk-tools accepts both the index and the
-            # apk artefacts because we signed each .apk during abuild.
-          '
 
           cat > site/index.html <<HTML
           <!doctype html>
