@@ -1,0 +1,13 @@
+includes:
+    - vendor/phpstan/phpstan-phpunit/extension.neon
+    - vendor/phpstan/phpstan-phpunit/rules.neon
+
+parameters:
+    level: 8
+    paths:
+        - tests/phpunit
+        - examples
+    excludePaths:
+        - tests/phpunit/bootstrap.php
+    stubFiles:
+        - phpstan-stubs/Parallax.stub

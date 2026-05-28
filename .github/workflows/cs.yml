@@ -1,0 +1,20 @@
+name: php-cs-fixer
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  cs-fixer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --ignore-platform-req=ext-parallax
+      - name: Run php-cs-fixer
+        run: vendor/bin/php-cs-fixer fix --dry-run --diff
